@@ -298,42 +298,37 @@ Note that calling the function again while a window handled this way is focused 
 
 ```lua
 local function pin_nofocus_toggle()
-  local tag = "pin_nofocus"
+    local tag = "pin_nofocus"
 
-  local function has_tag(window)
-    for _, t in ipairs(window.tags or {}) do
-      if t == tag then
-        return true
-      end
-    end
-    return false
-  end
-
-  local function restore()
-    for _, window in ipairs(hl.get_windows({ tag = tag })) do
-      hl.dispatch(hl.dsp.window.set_prop({ prop = "no_focus", value = "unset", window = window }))
-      if window.pinned then
-        hl.dispatch(hl.dsp.window.pin({ window = window }))
-      end
-      hl.dispatch(hl.dsp.window.tag({ tag = "-" .. tag, window = window }))
-    end
-  end
-
-  return function()
-    local window = hl.get_active_window()
-    if window == nil then
-      return
+    local function has_tag(window)
+        for _, t in ipairs(window.tags or {}) do
+            if t == tag then
+                return true
+            end
+        end
+        return false
     end
 
-    if window.floating and not window.pinned and not has_tag(window) then
-      hl.dispatch(hl.dsp.window.tag({ tag = "+" .. tag, window = window }))
-      hl.dispatch(hl.dsp.window.pin({ window = window }))
-      hl.dispatch(hl.dsp.window.set_prop({ prop = "no_focus", value = "1", window = window }))
-      return
-    end
+    return function()
+        local window = hl.get_active_window()
+        if not window then return end
 
-    restore()
-  end
+        if window.floating and window.fullscreen == 0 and not window.pinned and not has_tag(window) then
+            -- Tag the window and mark it as pinned with no_focus
+            hl.dispatch(hl.dsp.window.tag({ tag = "+" .. tag, window = window }))
+            hl.dispatch(hl.dsp.window.pin({ window = window }))
+            hl.dispatch(hl.dsp.window.set_prop({ prop = "no_focus", value = "1", window = window }))
+        else
+            -- Restore all windows that were marked this way
+            for _, window in ipairs(hl.get_windows({ tag = tag })) do
+                hl.dispatch(hl.dsp.window.set_prop({ prop = "no_focus", value = "unset", window = window }))
+                if window.pinned then
+                    hl.dispatch(hl.dsp.window.pin({ window = window }))
+                end
+                hl.dispatch(hl.dsp.window.tag({ tag = "-" .. tag, window = window }))
+            end
+        end
+    end
 end
 hl.bind("SUPER + P", pin_nofocus_toggle())
 ```
